@@ -1,0 +1,105 @@
+{
+	"name": "accurev",
+	"displayName": "AccuRev",
+	"description": "AccuRev Source control integration",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.31.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onView:repolog"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "accurevActivity",
+					"title": "AccuRev",
+					"icon": "icons/acgui.ico"
+				}
+			]
+		},
+		"views": {
+			"explorer": [
+				{
+					"id": "accurev",
+					"name": "AccuRev"
+				}
+			],
+			"accurevActivity" : [
+				{
+					"id": "repolog",
+					"name": "Repositories",
+					"when": "config.accurev.enabled && accurevOpenRepoCount != 0"
+				},
+				{
+					"id": "itemlog",
+					"name": "File History",
+					"when": "config.accurev.enabled && accurevOpenRepoCount != 0"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "accurev.refresh",
+				"category": "AccuRev",
+				"title": "Refresh"
+			},
+			{
+				"command": "accurev.openDiffBasis",
+				"category": "AccuRev",
+				"title": "Open diff with basis",
+				"icon": {
+					"dark": "icons/dark/undo2.svg",
+					"light": "icons/light/undo2.svg"
+				}
+			},
+			{
+				"command": "accurev.openDiffKept",
+				"category": "AccuRev",
+				"title": "Open diff with kept",
+				"icon": {
+					"dark": "icons/dark/target.svg",
+					"light": "icons/light/target.svg"
+				}
+			}
+		],
+		"configuration":{
+			"title": "AccuRev",
+			"properties": {
+				"accurev.enabled": {
+					"type": "boolean",
+					"description": "Whether AccuRev integration is enabled",
+					"default": true
+				},
+				"accurev.path": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "Path to the AccuRev command line executable",
+					"default": null,
+					"isExecutable": true
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"test": "npm run compile && node ./node_modules/vscode/bin/test"
+	},
+	"devDependencies": {
+		"typescript": "^3.3.1",
+		"vscode": "^1.1.28",
+		"tslint": "^5.12.1",
+		"@types/node": "^10.12.21",
+		"@types/mocha": "^2.2.42"
+	}
+}
