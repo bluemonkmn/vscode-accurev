@@ -10,39 +10,10 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onView:repolog"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-				{
-					"id": "accurevActivity",
-					"title": "AccuRev",
-					"icon": "icons/acgui.ico"
-				}
-			]
-		},
-		"views": {
-			"explorer": [
-				{
-					"id": "accurev",
-					"name": "AccuRev"
-				}
-			],
-			"accurevActivity" : [
-				{
-					"id": "repolog",
-					"name": "Repositories",
-					"when": "config.accurev.enabled && accurevOpenRepoCount != 0"
-				},
-				{
-					"id": "itemlog",
-					"name": "File History",
-					"when": "config.accurev.enabled && accurevOpenRepoCount != 0"
-				}
-			]
-		},
 		"commands": [
 			{
 				"command": "accurev.refresh",
@@ -84,6 +55,11 @@
 					"description": "Path to the AccuRev command line executable",
 					"default": null,
 					"isExecutable": true
+				},
+				"accurev.userid": {
+					"type": "string",
+					"description": "Name used to log into AccuRev when not already logged in",
+					"default": ""
 				}
 			}
 		}
