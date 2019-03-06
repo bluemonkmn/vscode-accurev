@@ -1,7 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { AccuRevRepo } from './repository';
+import { AccuRevRepo, AccuRevVersion } from './repository';
+import { AccuRevFile } from './file';
+import { AccuRevState } from './state';
 
 let globalState: {context: vscode.ExtensionContext,
 	config: vscode.WorkspaceConfiguration, 
@@ -12,7 +14,7 @@ let globalState: {context: vscode.ExtensionContext,
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
@@ -27,14 +29,14 @@ export function activate(context: vscode.ExtensionContext) {
 		configListener: null,
 		dispose: () => {deactivate();}};
 
-	globalState.configListener = vscode.workspace.onDidChangeConfiguration((section) => {
+	globalState.configListener = vscode.workspace.onDidChangeConfiguration(async (section) => {
 		if (section.affectsConfiguration("accurev.enabled")) {
 			if (globalState === null) {
 				return;
 			}
 			globalState.config = vscode.workspace.getConfiguration("accurev");
 			if (globalState.disposables.length === 0) { // enabled setting isn't updated yet.
-				innerActivate(context);
+				await innerActivate(context);
 			} else {
 				innerDeactivate();
 			}
@@ -42,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	if (config.enabled) {
-		innerActivate(context);
+		await innerActivate(context);
 	} else {
 		globalState.channel.appendLine("AccuRev extension is inactive except to listen for activation via enabled setting.");
 	}
@@ -50,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(globalState);
 }
 
-function innerActivate(context: vscode.ExtensionContext) {
+async function innerActivate(context: vscode.ExtensionContext) {
 	if (globalState === null) {
 		return;
 	}
@@ -63,14 +65,18 @@ function innerActivate(context: vscode.ExtensionContext) {
 		folder = rootUri.fsPath;
 	}
 
-	const repo = new AccuRevRepo(globalState.channel, folder, globalState.config);
+	const repo = await AccuRevRepo.GetInstance(globalState.channel, folder, globalState.config);
 	if (scm) {
 		globalState.disposables.push(scm, repo);
 		scm.quickDiffProvider = repo;
+		let kept = scm.createResourceGroup("kept", "Kept");
 		let modified = scm.createResourceGroup("modified", "Modified");
+		let overlap = scm.createResourceGroup("overlap", "Overlap");
 		globalState.disposables.push(modified);
 		repo.getResourceStates().then((result) => {
-			modified.resourceStates = result;
+			kept.resourceStates = result.filter((r) => {return r.isKept();});
+			modified.resourceStates = result.filter((r) => {return r.isModified();});
+			overlap.resourceStates = result.filter((r) => {return r.isOverlap();});
 		});
 	}
 
@@ -81,12 +87,27 @@ function innerActivate(context: vscode.ExtensionContext) {
 		repo.getPending();
 	}));
 
-	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffBasis', async (file: vscode.Uri) => {
+	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffBasis', async (file: AccuRevFile) => {
 		try {
-			let original = await repo.provideOriginalResource(file);
+			let original = await repo.provideOriginalResource(file.resourceUri);
 			if (original !== null) {
-				let filename = vscode.workspace.asRelativePath(file);
-				vscode.commands.executeCommand('vscode.diff', original, file,  `${repo.basisName}\\${filename} ↔ ${filename}`);
+				let filename = vscode.workspace.asRelativePath(file.resourceUri);
+				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${repo.basisName}\\${filename} ↔ ${filename}`);
+			}
+		}
+		catch(err) {
+			if (globalState) {
+				globalState.channel.appendLine(err);
+			}
+		}
+	}));
+
+	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffKept', async (file: AccuRevFile) => {
+		try {
+			let original = await repo.provideOriginalResource(file.resourceUri,undefined,AccuRevVersion.Kept);
+			if (original !== null) {
+				let filename = vscode.workspace.asRelativePath(file.resourceUri);
+				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${repo.basisName}\\${filename} ↔ ${filename}`);
 			}
 		}
 		catch(err) {
@@ -104,6 +125,7 @@ export function deactivate() {
 	if (globalState === null) {
 		return;
 	}
+	innerDeactivate();
 	if (globalState.configListener !== null) {
 		globalState.configListener.dispose();
 		globalState.configListener = null;

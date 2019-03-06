@@ -25,8 +25,8 @@
 				"category": "AccuRev",
 				"title": "Open diff with basis",
 				"icon": {
-					"dark": "icons/dark/undo2.svg",
-					"light": "icons/light/undo2.svg"
+					"dark": "icons/dark/deltabase.svg",
+					"light": "icons/light/deltabase.svg"
 				}
 			},
 			{
@@ -34,11 +34,30 @@
 				"category": "AccuRev",
 				"title": "Open diff with kept",
 				"icon": {
-					"dark": "icons/dark/target.svg",
-					"light": "icons/light/target.svg"
+					"dark": "icons/dark/deltasaved.svg",
+					"light": "icons/light/deltasaved.svg"
 				}
 			}
 		],
+		"menus": {
+			"scm/resourceState/context": [
+				{
+					"command": "accurev.openDiffBasis",
+					"when": "scmProvider == accurev && scmResourceGroup == modified",
+					"group": "inline"
+				},
+				{
+					"command": "accurev.openDiffBasis",
+					"when": "scmProvider == accurev && scmResourceGroup == kept",
+					"group": "inline"
+				},
+				{
+					"command": "accurev.openDiffKept",
+					"when": "scmProvider == accurev && scmResourceGroup == modified",
+					"group": "inline"
+				}
+			]
+		},
 		"configuration":{
 			"title": "AccuRev",
 			"properties": {
