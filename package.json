@@ -3,6 +3,10 @@
 	"displayName": "AccuRev",
 	"description": "AccuRev Source control integration",
 	"version": "0.0.1",
+	"author": {
+		"name": "Benjamin Marty",
+		"url": "https://github.com/bluemonkmn"
+	},
 	"engines": {
 		"vscode": "^1.31.0"
 	},
@@ -18,7 +22,12 @@
 			{
 				"command": "accurev.refresh",
 				"category": "AccuRev",
-				"title": "Refresh"
+				"title": "Refresh",
+				"icon": {
+					"dark": "icons/dark/refresh.svg",
+					"light": "icons/light/refresh.svg"
+				}
+
 			},
 			{
 				"command": "accurev.openDiffBasis",
@@ -55,6 +64,13 @@
 					"command": "accurev.openDiffKept",
 					"when": "scmProvider == accurev && scmResourceGroup == modified",
 					"group": "inline"
+				}
+			],
+			"scm/title": [
+				{
+					"command": "accurev.refresh",
+					"when": "scmProvider == accurev",
+					"group": "navigation"
 				}
 			]
 		},
@@ -96,5 +112,9 @@
 		"tslint": "^5.12.1",
 		"@types/node": "^10.12.21",
 		"@types/mocha": "^2.2.42"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bluemonkmn/vscode-accurev.git"
 	}
 }

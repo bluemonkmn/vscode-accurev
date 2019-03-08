@@ -53,14 +53,6 @@ export class AccuRevRepo {
         });
     }
 
-    public getPending() {
-        this.execute("stat -p -fx").then((result) => {
-            this.outChannel.appendLine(result);
-        }, (reject) => {
-            this.outChannel.appendLine(reject);
-        });
-    }
-
     public async getInfo() {
 		let result = await this.execute("info");
 		try {
@@ -156,7 +148,8 @@ export class AccuRevRepo {
                 this.outChannel.appendLine("Attempting to login to resolve the problem...");
                 try {
                    await this.execute(`login ${this.config.userid} ""`);
-                   resList = await this.execute("stat -p -fx");
+				   resList = await this.execute("stat -p -fx");
+				   await this.getInfo();
                 } catch (err2) {
                     this.outChannel.appendLine(`Failed to login: ${err2}`);
                     return [];
@@ -171,15 +164,20 @@ export class AccuRevRepo {
         let resourcePattern = /<element[^>]+\s+location=\"([^"\n]+)\"[^>]+\s+id=\"(\d+)\"[^>]+\s+status=\"([^"\n]+)\"/gm;
         while ((match = resourcePattern.exec(resList)) !== null) {
 			let state: AccuRevState = AccuRevState.kept;
-			if (match[3].indexOf("(overlap)") >= 0) {
-				state = AccuRevState.overlap;
-			} else if (match[3].indexOf("(modified)") >= 0) {
+			if (match[3].indexOf("(modified)") >= 0) {
 				if (match[3].indexOf("(kept)") >= 0) {
 					state = AccuRevState.keptmodified;
 				} else {
 					state = AccuRevState.modified;
 				}
-            }
+			}
+			if (match[3].indexOf("(overlap)")>=0) {
+				if (state === AccuRevState.modified) {
+					state = AccuRevState.overlapmodified;
+				} else {
+					state = AccuRevState.overlapkept;
+				}
+			}
             let filePath = path.join(this.workspaceRoot, match[1].substr(2));
             result.push(new AccuRevFile(vscode.Uri.file(filePath), Number.parseInt(match[2]), state));
         }

@@ -1,51 +1,57 @@
-# accurev README
+# Visual Studio Code AccuRev Extension README
 
-This is the README for your extension "accurev". After writing up a brief description, we recommend including the following sections.
+This un-official extension allows some simple integration between Visual Studio Code and AccuRev source control. Note that this extension is not provided or approved by the owners of AccuRev.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+* Automatically log into AccuRev if necessary and:
+   * If AccuRev user name setting is provided in settings
+   * If no password is required.
 
-For example if there is an image subfolder under your extension project workspace:
+* AccuRev Output stream shows information about attempted AccuRev operations and status information.
 
-\!\[feature X\]\(images/feature-x.png\)
+* List in the Source Control view all files pending promotion (modified and kept files) within the current workspace, organized into "Kept" and "Modified" categories (Kept is similar to Git's staged status).
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+* Select any file in Source Control view to view changes against workspace's basis stream.
+
+* Use inline command icon to view changes of modified files only against kept version instead of all changes against basis stream.
+
+* Overlaps indicated by status icons in Source Control view.
+
+* Quick-diff allows immediate visibility in any file loaded into the editor of lines that are changed versus the verion in the basis stream.
+
+![Quick-diff support](images/vscode-accurev.gif)
+
+> Tip: Clicking on the colored bar in a source file where changes have occurred pops up quick-diff details.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+* AccuRev must be installed.
+* The Visual Studio Code workspace root must be within an AccuRev workspace.
+* If `accurev.exe` is not in the system path, the path must be entered in the settings for this extension.
+* User must either log into AccuRev separately, or must provide the user name in the extension settings of an account with no password.
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: enable/disable this extension
-* `myExtension.thing`: set to `blah` to do something
+* `accurev.enabled`: Turn on or off all features provided by this extension except the ability to listen for changes to `accurev.enabled`.
+* `accurev.path`: The fully qualified path to `accurev.exe`. This is only required if `accurev.exe` is not in the system path.
+* `accurev.userid`: The name used when attempting to automatically log in to AccuRev if attempts to interact with AccuRev report an expired or missing authentication token. This will only work for accounts that have no password (the password for automatic logins is always assumed to be blank).
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+* There is currently no means of keeping, promoting or merging code, only viewing changes.
+* There is currently no way of including external files, which would be pointless right now anyway with the lack of ability to keep or promote changes.
+* Even though there is no ability to promote or keep code, a textbox at the top of the source control view for entering promote comments is visible.
+* Refreshing the source control view must be done explicitly with a refresh button in the title area rather than implicitly when files are changed.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- Initial release 0.0.1 on 2019-03-08 is intended for alpha/beta testing.
+- See [Change Log](CHANGELOG.md) for details.
 
 -----------------------------------------------------------------------------------------------------------
 

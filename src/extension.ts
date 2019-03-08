@@ -65,26 +65,27 @@ async function innerActivate(context: vscode.ExtensionContext) {
 		folder = rootUri.fsPath;
 	}
 
+	let kept: vscode.SourceControlResourceGroup;
+	let modified: vscode.SourceControlResourceGroup;
+
 	const repo = await AccuRevRepo.GetInstance(globalState.channel, folder, globalState.config);
 	if (scm) {
 		globalState.disposables.push(scm, repo);
 		scm.quickDiffProvider = repo;
-		let kept = scm.createResourceGroup("kept", "Kept");
-		let modified = scm.createResourceGroup("modified", "Modified");
-		let overlap = scm.createResourceGroup("overlap", "Overlap");
+		kept = scm.createResourceGroup("kept", "Kept");
+		modified = scm.createResourceGroup("modified", "Modified");
 		globalState.disposables.push(modified);
 		repo.getResourceStates().then((result) => {
 			kept.resourceStates = result.filter((r) => {return r.isKept();});
 			modified.resourceStates = result.filter((r) => {return r.isModified();});
-			overlap.resourceStates = result.filter((r) => {return r.isOverlap();});
 		});
 	}
 
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.refresh', () => {
-		if (globalState !== null) {
-			globalState.channel.appendLine('Hello World!');
-		}
-		repo.getPending();
+		repo.getResourceStates().then((result) => {
+			kept.resourceStates = result.filter((r) => {return r.isKept();});
+			modified.resourceStates = result.filter((r) => {return r.isModified();});
+		});
 	}));
 
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffBasis', async (file: AccuRevFile) => {

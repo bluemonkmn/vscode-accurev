@@ -16,14 +16,14 @@ export class AccuRevFile implements vscode.SourceControlResourceState {
 	}
 	
 	public isModified(): boolean {
-		return (this.state === AccuRevState.modified|| this.state === AccuRevState.keptmodified);
+		return (this.state === AccuRevState.modified || this.state === AccuRevState.keptmodified || this.state === AccuRevState.overlapmodified);
 	}
 
 	public isKept(): boolean {
-		return (this.state === AccuRevState.kept);
+		return (this.state === AccuRevState.kept || this.state === AccuRevState.overlapkept);
 	}
 
 	public isOverlap(): boolean {
-		return this.state === AccuRevState.overlap;
+		return (this.state === AccuRevState.overlapkept || this.state === AccuRevState.overlapmodified);
 	}
 }
