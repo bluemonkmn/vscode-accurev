@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { AccuRevFile } from './file';
 import { AccuRevState } from './state';
 import * as path from 'path';
+import { stringify } from 'querystring';
 
 export enum AccuRevVersion {
 	Basis,
@@ -13,35 +14,52 @@ export enum AccuRevVersion {
 
 export class AccuRevRepo {
     outChannel: vscode.OutputChannel;
-    workspaceRoot: string;
-    workspaceName: string;
-    basisName: string;
-    disposables: Map<string, vscode.Disposable> = new Map<string, vscode.Disposable>();
+    workspaces: Map<string, {workspace: string, basis: string}>;
+	disposables: Map<string, vscode.Disposable> = new Map<string, vscode.Disposable>();
     config: vscode.WorkspaceConfiguration;
 
-    private constructor(out: vscode.OutputChannel, workspaceRoot: string, config: vscode.WorkspaceConfiguration) {
+    private constructor(out: vscode.OutputChannel, workspaces: Map<string, {workspace: string, basis: string}>, config: vscode.WorkspaceConfiguration) {
         this.outChannel = out;
-        this.workspaceRoot = workspaceRoot;
-        this.workspaceName = "";
-        this.basisName = "";
+        this.workspaces = workspaces;
         this.config = config;
     }
 
-	public static async GetInstance(out: vscode.OutputChannel, workspaceRoot: string, config: vscode.WorkspaceConfiguration): Promise<AccuRevRepo> {
-		let repo = new AccuRevRepo(out, workspaceRoot, config);
-		await repo.getInfo();
-		return repo;
+	public static async GetInstance(out: vscode.OutputChannel, roots: string[], config: vscode.WorkspaceConfiguration): Promise<AccuRevRepo> {
+		let workspaceInfo = await Promise.all(roots.map(root => {return AccuRevRepo.getInfo(out, config, root);}));
+		let wsMap: Map<string, {workspace: string, basis: string}> = new Map<string, {workspace: string, basis: string}>();
+		for (let ws of workspaceInfo) {
+			if (ws.basis && !wsMap.has(ws.root)) {
+				wsMap.set(ws.root, {workspace: ws.workspace, basis: ws.basis});
+			}
+		}
+		return new AccuRevRepo(out, wsMap, config);
 	}
 
-    public async execute(command: string): Promise<string> {
+	public static async execute(out: vscode.OutputChannel, config: vscode.WorkspaceConfiguration, folder: string, command: string, giveUpOnError: boolean): Promise<string> {
         return new Promise<string>(async (resolve, reject) => {
 			let accurev = "accurev";
-			if (this.config.path !== null) {
-				accurev = `\"${this.config.path}\"`;
+			if (config.path !== null) {
+				accurev = `\"${config.path}\"`;
 			}
-            cp.exec(`cd \"${this.workspaceRoot}\" & ${accurev} ${command}`, (err, stdout, stderr) => {
+			out.appendLine(command);
+            cp.exec(`cd \"${folder}\" & ${accurev} ${command}`, (err, stdout, stderr) => {
                 if (err) {
-                    reject(err);
+					if (!giveUpOnError && /session token/.test(err.message)) {
+						out.appendLine(`Error attempting ${command}. Attempting login to resolve.`);
+						AccuRevRepo.execute(out, config, folder, "login", true).then(value => {
+							out.appendLine(`Login resolved problem: ${value}`);
+							AccuRevRepo.execute(out, config, folder, command, true).then(value => {
+								resolve(value);
+							}, reason => {
+								reject(reason);
+							});
+						}, reason => {
+							out.appendLine(`Login failed to resolve problem: ${reason}`);
+							reject(reason);
+						});
+					} else {
+						reject(err);
+					}
                     return;
                 }
                 let result: string = stdout;
@@ -51,28 +69,36 @@ export class AccuRevRepo {
                 resolve(result);
             });
         });
+	}
+
+    public execute(root: string, command: string): Promise<string> {
+		return AccuRevRepo.execute(this.outChannel, this.config, root, command, false);
     }
 
-    public async getInfo() {
-		let result = await this.execute("info");
+	public static async getInfo(outChannel: vscode.OutputChannel, config: vscode.WorkspaceConfiguration, folder: string): Promise<{root: string, workspace: string, basis: string}> {
+		let out = await AccuRevRepo.execute(outChannel, config, folder, "info", false);
+		let result = {root: "", workspace: "", basis: ""};
 		try {
-            const reWS = /^(Workspace\/ref|Basis):\s+(\S+)\s*$/gm;
+            const reWS = /^(Workspace\/ref|Basis|Top):\s+([^\n\r]+)\s*$/gm;
             let match: RegExpExecArray | null;
-            while ((match = reWS.exec(result)) !== null) {
+            while ((match = reWS.exec(out)) !== null) {
                 if (match[1] === "Workspace/ref") {
-                    this.workspaceName = match[2];
+                    result.workspace = match[2];
                 } else if (match[1] === "Basis") {
-                    this.basisName = match[2];
-                }
+                    result.basis = match[2];
+                } else if (match[1] === "Top") {
+					result.root = match[2].toLowerCase();
+				}
             }
         } catch(err) {
-            this.outChannel.appendLine(err);
-        }
-    }
+            outChannel.appendLine(err);
+		}
+		return result;
+	}
 
     public async provideOriginalResource(uri: vscode.Uri, token?: vscode.CancellationToken, version?: AccuRevVersion): Promise<vscode.Uri | null> {
-		if (!this.basisName || !this.workspaceName) {
-			this.outChannel.appendLine(`Attempted to get original version of ${uri.fsPath} before initialization completed.`);
+		let wsInfo = this.GetWorkspaceInfo(uri);
+		if (wsInfo === undefined) {
 			return null;
 		}
         await this.makeTempParentExist();
@@ -91,13 +117,13 @@ export class AccuRevRepo {
             await mkdir(tempDir, {recursive: true});
 		}
 		
-		let relativePath = vscode.workspace.asRelativePath(uri.fsPath);
+		let relativePath = path.relative(wsInfo.root, uri.fsPath);
 		const tempFullPath = path.join(tempDir,relativePath);
 		try {
 			if (version === AccuRevVersion.Kept) {
-				await this.execute(`pop -O -v ${this.workspaceName} -L ${tempDir} \"\\.\\${relativePath}\"`);
+				await this.execute(wsInfo.root, `pop -O -v ${wsInfo.workspace} -L ${tempDir} \"\\.\\${relativePath}\"`);
 			} else {
-				await this.execute(`pop -O -v ${this.basisName} -L ${tempDir} \"\\.\\${relativePath}\"`);
+				await this.execute(wsInfo.root, `pop -O -v ${wsInfo.basis} -L ${tempDir} \"\\.\\${relativePath}\"`);
 			}
 		}
 		catch(err) {
@@ -134,52 +160,43 @@ export class AccuRevRepo {
     }
 
     public async getResourceStates(): Promise<AccuRevFile[]> {
-        let resList: string;
+        let resLists: {root: string, resOutput: string}[] = [];
+		let result: AccuRevFile[] = [];
         try {
-            resList = await this.execute("stat -p -fx");
-        }
+			let stats: Promise<{root: string, resOutput: string}>[]= [];
+			for(let [wsRoot,] of this.workspaces) {
+				stats.push(this.execute(wsRoot, "stat -p -fx").then(value => {
+					return {root: wsRoot, resOutput: value};
+				}));
+			}
+            resLists = await Promise.all(stats);
+
+			let match: RegExpExecArray | null;
+			let resourcePattern = /<element[^>]+\s+location=\"([^"\n]+)\"[^>]+\s+id=\"(\d+)\"[^>]+\s+status=\"([^"\n]+)\"/gm;
+			for (let resList of resLists) {
+				while ((match = resourcePattern.exec(resList.resOutput)) !== null) {
+					let state: AccuRevState = AccuRevState.kept;
+					if (match[3].indexOf("(modified)") >= 0) {
+						if (match[3].indexOf("(kept)") >= 0) {
+							state = AccuRevState.keptmodified;
+						} else {
+							state = AccuRevState.modified;
+						}
+					}
+					if (match[3].indexOf("(overlap)")>=0) {
+						if (state === AccuRevState.modified) {
+							state = AccuRevState.overlapmodified;
+						} else {
+							state = AccuRevState.overlapkept;
+						}
+					}
+					let filePath = path.join(resList.root, match[1].substr(2));
+					result.push(new AccuRevFile(vscode.Uri.file(filePath), Number.parseInt(match[2]), state));
+				}
+			}
+		}
         catch (err) {
-            this.outChannel.appendLine(`Error retrieving pending file information: ${err}`);
-            if (/session token/.test(err)) {
-                if (!this.config.userid) {
-                    this.outChannel.appendLine("AccuRev User ID setting is not specified. To allow automatic login, enter this setting.");
-                    return [];
-                }
-                this.outChannel.appendLine("Attempting to login to resolve the problem...");
-                try {
-                   await this.execute(`login ${this.config.userid} ""`);
-				   resList = await this.execute("stat -p -fx");
-				   await this.getInfo();
-                } catch (err2) {
-                    this.outChannel.appendLine(`Failed to login: ${err2}`);
-                    return [];
-                }
-            } else {
-                this.outChannel.appendLine("Cause of error does not appear login related, giving up.");
-                return [];
-            }
-        }
-        let match: RegExpExecArray | null;
-        let result: AccuRevFile[] = [];
-        let resourcePattern = /<element[^>]+\s+location=\"([^"\n]+)\"[^>]+\s+id=\"(\d+)\"[^>]+\s+status=\"([^"\n]+)\"/gm;
-        while ((match = resourcePattern.exec(resList)) !== null) {
-			let state: AccuRevState = AccuRevState.kept;
-			if (match[3].indexOf("(modified)") >= 0) {
-				if (match[3].indexOf("(kept)") >= 0) {
-					state = AccuRevState.keptmodified;
-				} else {
-					state = AccuRevState.modified;
-				}
-			}
-			if (match[3].indexOf("(overlap)")>=0) {
-				if (state === AccuRevState.modified) {
-					state = AccuRevState.overlapmodified;
-				} else {
-					state = AccuRevState.overlapkept;
-				}
-			}
-            let filePath = path.join(this.workspaceRoot, match[1].substr(2));
-            result.push(new AccuRevFile(vscode.Uri.file(filePath), Number.parseInt(match[2]), state));
+			this.outChannel.appendLine(`Error getting resource states: ${err}`);
         }
         return result;
     }
@@ -237,5 +254,17 @@ export class AccuRevRepo {
                 this.outChannel.appendLine(`Failed to create ${tempParent}: ${err}`);
             }
         }
-    }
+	}
+	
+	public GetWorkspaceInfo(uri: vscode.Uri): {root: string; workspace: string; basis: string} | undefined {
+		for(let [wsRoot,] of this.workspaces) {
+			if (uri.fsPath.startsWith(wsRoot)) {
+				let ws = this.workspaces.get(wsRoot);
+				if (ws === undefined) {
+					return undefined;
+				}
+				return {root: wsRoot, workspace: ws.workspace, basis: ws.basis};
+			}
+		}
+	}
 }

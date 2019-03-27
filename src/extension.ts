@@ -57,18 +57,25 @@ async function innerActivate(context: vscode.ExtensionContext) {
 		return;
 	}
 
-	let folder: string = vscode.env.appRoot;
+	let folders: string[] = [vscode.env.appRoot];
 	let scm: vscode.SourceControl | undefined;
 	if (vscode.workspace.workspaceFolders) {
-		let rootUri = vscode.workspace.workspaceFolders[0].uri;
-		scm = vscode.scm.createSourceControl("accurev", "AccuRev", rootUri);
-		folder = rootUri.fsPath;
+		if (vscode.workspace.workspaceFolders.length === 1) {
+			let rootUri = vscode.workspace.workspaceFolders[0].uri;
+			scm = vscode.scm.createSourceControl("accurev", "AccuRev", rootUri);
+		} else {
+			scm = vscode.scm.createSourceControl("accurev", "AccuRev");
+		}
+		folders = vscode.workspace.workspaceFolders.map(folder => {
+			return folder.uri.fsPath;
+		});
 	}
 
 	let kept: vscode.SourceControlResourceGroup;
 	let modified: vscode.SourceControlResourceGroup;
 
-	const repo = await AccuRevRepo.GetInstance(globalState.channel, folder, globalState.config);
+	
+	const repo = await AccuRevRepo.GetInstance(globalState.channel, folders, globalState.config);
 	if (scm) {
 		globalState.disposables.push(scm, repo);
 		scm.quickDiffProvider = repo;
@@ -91,9 +98,13 @@ async function innerActivate(context: vscode.ExtensionContext) {
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffBasis', async (file: AccuRevFile) => {
 		try {
 			let original = await repo.provideOriginalResource(file.resourceUri);
+			let wsInfo = repo.GetWorkspaceInfo(file.resourceUri);
+			if (wsInfo === undefined) {
+				return;
+			}
 			if (original !== null) {
 				let filename = vscode.workspace.asRelativePath(file.resourceUri);
-				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${repo.basisName}\\${filename} ↔ ${filename}`);
+				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${wsInfo.basis} ↔ ${filename}`);
 			}
 		}
 		catch(err) {
@@ -106,9 +117,13 @@ async function innerActivate(context: vscode.ExtensionContext) {
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffKept', async (file: AccuRevFile) => {
 		try {
 			let original = await repo.provideOriginalResource(file.resourceUri,undefined,AccuRevVersion.Kept);
+			let wsInfo = repo.GetWorkspaceInfo(file.resourceUri);
+			if (wsInfo === undefined) {
+				return;
+			}
 			if (original !== null) {
 				let filename = vscode.workspace.asRelativePath(file.resourceUri);
-				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${repo.basisName}\\${filename} ↔ ${filename}`);
+				await vscode.commands.executeCommand('vscode.diff', original, file.resourceUri,  `${wsInfo.workspace} ↔ ${filename}`);
 			}
 		}
 		catch(err) {

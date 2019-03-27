@@ -7,6 +7,7 @@
 		"name": "Benjamin Marty",
 		"url": "https://github.com/bluemonkmn"
 	},
+	"publisher": "bluemonkmn",
 	"engines": {
 		"vscode": "^1.31.0"
 	},
