@@ -2,7 +2,7 @@
 	"name": "accurev",
 	"displayName": "AccuRev",
 	"description": "AccuRev Source control integration",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"author": {
 		"name": "Benjamin Marty",
 		"url": "https://github.com/bluemonkmn"
@@ -47,6 +47,11 @@
 					"dark": "icons/dark/deltasaved.svg",
 					"light": "icons/light/deltasaved.svg"
 				}
+			},
+			{
+				"command": "accurev.openFile",
+				"category": "AccuRev",
+				"title": "Open file"
 			}
 		],
 		"menus": {
@@ -65,6 +70,10 @@
 					"command": "accurev.openDiffKept",
 					"when": "scmProvider == accurev && scmResourceGroup == modified",
 					"group": "inline"
+				},
+				{
+					"command": "accurev.openFile",
+					"when": "scmProvider == accurev"
 				}
 			],
 			"scm/title": [

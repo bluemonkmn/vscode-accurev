@@ -133,6 +133,17 @@ async function innerActivate(context: vscode.ExtensionContext) {
 		}
 	}));
 
+	globalState.disposables.push(vscode.commands.registerCommand('accurev.openFile', async (file: AccuRevFile) => {
+		try {
+			await vscode.commands.executeCommand('vscode.open', file.resourceUri);
+		}
+		catch(err) {
+			if (globalState) {
+				globalState.channel.appendLine(err);
+			}
+		}
+	}));
+
 	globalState.channel.appendLine("AccuRev extension is now active.");
 }
 
