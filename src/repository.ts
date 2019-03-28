@@ -46,7 +46,7 @@ export class AccuRevRepo {
                 if (err) {
 					if (!giveUpOnError && /session token/.test(err.message)) {
 						out.appendLine(`Error attempting ${command}. Attempting login to resolve.`);
-						AccuRevRepo.execute(out, config, folder, "login", true).then(value => {
+						AccuRevRepo.execute(out, config, folder, `login ${config.userid} ""`, true).then(value => {
 							out.appendLine(`Login resolved problem: ${value}`);
 							AccuRevRepo.execute(out, config, folder, command, true).then(value => {
 								resolve(value);
@@ -65,7 +65,10 @@ export class AccuRevRepo {
                 let result: string = stdout;
                 if (stderr) {
                     result += stderr;
-                }
+				}
+				if (result.length < 256) {
+					out.appendLine(result);
+				}
                 resolve(result);
             });
         });
@@ -79,6 +82,11 @@ export class AccuRevRepo {
 		let out = await AccuRevRepo.execute(outChannel, config, folder, "info", false);
 		let result = {root: "", workspace: "", basis: ""};
 		try {
+			if (out.indexOf("(not logged in)") > 0) {
+				outChannel.appendLine("Attempting login to retrieve complete workspace info.");
+				await AccuRevRepo.execute(outChannel, config, folder, `login ${config.userid} ""`, true);
+				out = await AccuRevRepo.execute(outChannel, config, folder, "info", false);
+			}
             const reWS = /^(Workspace\/ref|Basis|Top):\s+([^\n\r]+)\s*$/gm;
             let match: RegExpExecArray | null;
             while ((match = reWS.exec(out)) !== null) {
