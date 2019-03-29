@@ -27,7 +27,7 @@ This un-official extension allows some simple integration between Visual Studio 
 ## Requirements
 
 * AccuRev must be installed.
-* The Visual Studio Code workspace root must be within an AccuRev workspace.
+* One or more Visual Studio Code workspace folders must be within an AccuRev workspace.
 * If `accurev.exe` is not in the system path, the path must be entered in the settings for this extension.
 * User must either log into AccuRev separately, or must provide the user name in the extension settings of an account with no password.
 
@@ -43,15 +43,20 @@ This extension contributes the following settings:
 
 * There is currently no means of keeping, promoting or merging code, only viewing changes.
 * There is currently no way of including external files, which would be pointless right now anyway with the lack of ability to keep or promote changes.
-* Even though there is no ability to promote or keep code, a textbox at the top of the source control view for entering promote comments is visible.
+* Even though there is no ability to promote or keep code, a textbox at the top of the source control view for entering promote comments is visible, which does nothing.
 * Refreshing the source control view must be done explicitly with a refresh button in the title area rather than implicitly when files are changed.
 
 ## Release Notes
 
-### 0.0.1
+### 0.0.2
+- Support for multiple folders per workspace.
 
-- Initial release 0.0.1 on 2019-03-08 is intended for alpha/beta testing.
-- See [Change Log](CHANGELOG.md) for details.
+### 0.0.3
+- _Open file_ context menu command from source control view opens a file in the normal editor instead of diff comparison.
+- Log now reports all commands sent to AccuRev and outputs results shorter than 256 characters.
+- Automatic login works better.
+
+### See [Change Log](CHANGELOG.md) for details.
 
 -----------------------------------------------------------------------------------------------------------
 
