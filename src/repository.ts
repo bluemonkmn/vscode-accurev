@@ -82,24 +82,34 @@ export class AccuRevRepo {
 		let out = await AccuRevRepo.execute(outChannel, config, folder, "info", false);
 		let result = {root: "", workspace: "", basis: ""};
 		try {
-			if (out.indexOf("(not logged in)") > 0) {
+			outChannel.appendLine(out);
+			result = this.parseInfo(out);
+			if (!result.workspace) {
 				outChannel.appendLine("Attempting login to retrieve complete workspace info.");
 				await AccuRevRepo.execute(outChannel, config, folder, `login ${config.userid} ""`, true);
 				out = await AccuRevRepo.execute(outChannel, config, folder, "info", false);
+				outChannel.appendLine(out);
+				result = this.parseInfo(out);
 			}
-            const reWS = /^(Workspace\/ref|Basis|Top):\s+([^\n\r]+)\s*$/gm;
-            let match: RegExpExecArray | null;
-            while ((match = reWS.exec(out)) !== null) {
-                if (match[1] === "Workspace/ref") {
-                    result.workspace = match[2];
-                } else if (match[1] === "Basis") {
-                    result.basis = match[2];
-                } else if (match[1] === "Top") {
-					result.root = match[2].toLowerCase();
-				}
-            }
+			outChannel.appendLine(`Root: "${result.root}", Workspace: "${result.workspace}", Basis: "${result.basis}"`);
         } catch(err) {
             outChannel.appendLine(err);
+		}
+		return result;
+	}
+
+	private static parseInfo(out: string): {root: string, workspace: string, basis: string} {
+		const reWS = /^(Workspace\/ref|Basis|Top):\s+([^\n\r]+)\s*$/gm;
+		let match: RegExpExecArray | null;
+		let result = {root: "", workspace: "", basis: ""};
+		while ((match = reWS.exec(out)) !== null) {
+			if (match[1] === "Workspace/ref") {
+				result.workspace = match[2];
+			} else if (match[1] === "Basis") {
+				result.basis = match[2];
+			} else if (match[1] === "Top") {
+				result.root = match[2].toLowerCase();
+			}
 		}
 		return result;
 	}

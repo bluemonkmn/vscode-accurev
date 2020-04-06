@@ -56,6 +56,10 @@ This extension contributes the following settings:
 - Log now reports all commands sent to AccuRev and outputs results shorter than 256 characters.
 - Automatic login works better.
 
+### 0.1.0
+- Improved startup sequence to better detect when login is needed (corrects problem where first startup does not show any files).
+- More AccuRev log output during startup.
+
 ### See [Change Log](CHANGELOG.md) for details.
 
 -----------------------------------------------------------------------------------------------------------
