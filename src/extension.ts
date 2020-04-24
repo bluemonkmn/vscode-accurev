@@ -79,20 +79,35 @@ async function innerActivate(context: vscode.ExtensionContext) {
 	if (scm) {
 		globalState.disposables.push(scm, repo);
 		scm.quickDiffProvider = repo;
-		kept = scm.createResourceGroup("kept", "Kept");
+		if (!globalState.config.singleGroup) {
+			kept = scm.createResourceGroup("kept", "Kept");
+			globalState.disposables.push(kept);
+		}
 		modified = scm.createResourceGroup("modified", "Modified");
 		globalState.disposables.push(modified);
-		repo.getResourceStates().then((result) => {
-			kept.resourceStates = result.filter((r) => {return r.isKept();});
-			modified.resourceStates = result.filter((r) => {return r.isModified();});
-		});
+		if (globalState.config.singleGroup) {
+			repo.getResourceStates().then((result) => {
+				modified.resourceStates = result;
+			});
+		} else {
+			repo.getResourceStates().then((result) => {
+				kept.resourceStates = result.filter((r) => {return r.isKept();});
+				modified.resourceStates = result.filter((r) => {return r.isModified();});
+			});
+		}
 	}
 
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.refresh', () => {
-		repo.getResourceStates().then((result) => {
-			kept.resourceStates = result.filter((r) => {return r.isKept();});
-			modified.resourceStates = result.filter((r) => {return r.isModified();});
-		});
+		if ((globalState === null) || globalState.config.singleGroup) {
+			repo.getResourceStates().then((result) => {
+				modified.resourceStates = result;
+			});
+		} else {
+			repo.getResourceStates().then((result) => {
+				kept.resourceStates = result.filter((r) => {return r.isKept();});
+				modified.resourceStates = result.filter((r) => {return r.isModified();});
+			});
+		}
 	}));
 
 	globalState.disposables.push(vscode.commands.registerCommand('accurev.openDiffBasis', async (file: AccuRevFile) => {

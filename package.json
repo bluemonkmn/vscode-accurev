@@ -2,7 +2,7 @@
 	"name": "accurev",
 	"displayName": "AccuRev",
 	"description": "AccuRev Source control integration",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"author": {
 		"name": "Benjamin Marty",
 		"url": "https://github.com/bluemonkmn"
@@ -91,6 +91,11 @@
 					"type": "boolean",
 					"description": "Whether AccuRev integration is enabled",
 					"default": true
+				},
+				"accurev.singleGroup": {
+					"type": "boolean",
+					"description": "Instead of separating modified and kept files, show them in a single list",
+					"default": false
 				},
 				"accurev.path": {
 					"type": [

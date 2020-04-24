@@ -60,6 +60,9 @@ This extension contributes the following settings:
 - Improved startup sequence to better detect when login is needed (corrects problem where first startup does not show any files).
 - More AccuRev log output during startup.
 
+### 0.1.1
+- Single Group setting allows source control files to be listed in a single group instead of split into Kept and Modified.
+
 ### See [Change Log](CHANGELOG.md) for details.
 
 -----------------------------------------------------------------------------------------------------------
